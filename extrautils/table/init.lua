@@ -3,9 +3,21 @@ local pairs = pairs
 local getmetatable = getmetatable
 local setmetatable = setmetatable
 
----@class AwesomeExtrautils.table
-local table = { mt = {} }
+---@class AwesomeExtrautils.Table : table
+---@field mt table
 
+local function new_Table(base, mt)
+	base = {}
+	mt = mt or getmetatable(base) or {}
+	mt.__index = mt
+
+	base.mt = mt
+
+	return setmetatable(base, mt)
+end
+
+---@class AwesomeExtrautils.table : AwesomeExtrautils.Table
+local table = new_Table()
 
 --- Create a new table with a metatable pre-set, accessable through the ["mt"] field.
 --- The metatable has itself set as the `__index`.
@@ -17,15 +29,9 @@ local table = { mt = {} }
 ---
 ---@param base? table
 ---@param mt? table
----@return table
+---@return AwesomeExtrautils.Table
 function table.create(base, mt)
-	base = {}
-	mt = mt or getmetatable(base) or {}
-	mt.__index = mt
-
-	base.mt = mt
-
-	return setmetatable(base, mt)
+	return new_Table(base, mt)
 end
 
 --- Run a callback function for each field in a table, accumulating the results
@@ -208,4 +214,8 @@ function table.range(start, stop, step)
 	return table.make_iterable(result, true)
 end
 
-return setmetatable(table, table.mt)
+function table.is_empty(tb)
+	return (not tb) or (next(tb) ~= nil)
+end
+
+return table

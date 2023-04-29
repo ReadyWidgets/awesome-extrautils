@@ -1,5 +1,7 @@
----@class AwesomeExtrautils.awesome
-local awesome = { mt = {} }
+local extrautils_table = require("extrautils.table")
+
+---@class AwesomeExtrautils.awesome : AwesomeExtrautils.Table
+local awesome = extrautils_table.create()
 
 local awful, gears, wibox
 do
@@ -10,7 +12,7 @@ do
 	end)
 
 	if not success then
-		return
+		return awesome
 	end
 end
 
@@ -42,4 +44,4 @@ function awesome.create_widget(args)
 	return widget
 end
 
-return setmetatable(awesome, awesome.mt)
+return awesome

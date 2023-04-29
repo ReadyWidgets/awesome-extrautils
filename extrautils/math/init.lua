@@ -1,10 +1,12 @@
 local luamath = math
 
----@class AwesomeExtrautils.math
-local math = { mt = {} }
+local extrautils_table = require("extrautils.table")
+
+---@class AwesomeExtrautils.math : AwesomeExtrautils.Table
+local math = extrautils_table.create()
 
 function math.round(x)
 	return luamath(x + 0.5)
 end
 
-return setmetatable(math, math.mt)
+return math

@@ -2,8 +2,8 @@ local luastring = string
 
 local extrautils_table = require("extrautils.table")
 
----@class AwesomeExtrautils.string
-local string = { mt = {} }
+---@class AwesomeExtrautils.string : AwesomeExtrautils.Table
+local string = extrautils_table.create()
 
 function string.center(str, width, char)
 	char = char or " "
@@ -24,4 +24,8 @@ function string.get_characters(str)
 	return result
 end
 
-return setmetatable(string, string.mt)
+function string.is_empty(str)
+	return (not str) or (str == "")
+end
+
+return string

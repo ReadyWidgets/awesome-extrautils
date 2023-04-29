@@ -1,6 +1,8 @@
 ---@diagnostic disable: undefined-global
----@class AwesomeExtrautils.capi
-local capi = { mt = {} }
+local extrautils_table = require("extrautils.table")
+
+---@class AwesomeExtrautils.capi : AwesomeExtrautils.Table
+local capi = extrautils_table.create()
 
 capi.awesome      = awesome
 capi.client       = client
@@ -11,4 +13,4 @@ capi.root         = root
 capi.screen       = screen
 capi.tag          = tag
 
-return setmetatable(capi, capi.mt)
+return capi
