@@ -218,4 +218,57 @@ function table.is_empty(tb)
 	return (not tb) or (next(tb) ~= nil)
 end
 
+function table.get_longest_key_length(tb, stringify, use_value)
+	stringify = stringify or tostring
+
+	local longest_key_length = 0
+
+	for k, v in pairs(tb) do
+		local k_len = #stringify(use_value and v or k)
+
+		if k_len > longest_key_length then
+			longest_key_length = k_len
+		end
+	end
+
+	return longest_key_length
+end
+
+---@param tb any
+---@param args? table
+---@return string
+function table.tostring(tb, args)
+	if type(tb) ~= "table" then
+		return tostring(tb)
+	end
+
+	local mt = getmetatable(tb)
+	if mt and rawget(mt, "__tostring") then
+		return tostring(tb)
+	end
+
+	args = args or {}
+
+	args.indent = args.indent or "    " ---@type integer|string
+	if type(args.indent) == "number" then
+		args.indent = (" "):rep(args.indent) ---@type string
+	end
+	args.depth = args.depth or 0 ---@type integer
+
+	local out = "{\n"
+
+	local key_tostring_cache = {}
+	local longest_key_length = table.get_longest_key_length(tb, table.tostring)
+
+	for k, v in pairs(tb) do
+		local k_str = key_tostring_cache[k]
+		out = out .. args.indent .. k_str .. (" "):rep(longest_key_length - #k_str) .. " = " .. table.tostring(v, {
+			indent = args.indent,
+			depth = args.depth + 1,
+		}) .. ",\n"
+	end
+
+	return out .. "}"
+end
+
 return table

@@ -10,6 +10,8 @@ Additionally, this repository is currently only tested with Awesome compiled aga
 
 # Installation
 
+> Note: `${XDG_CONFIG_HOME:-$HOME/.config}/awesome` usually unwraps to `~/.config/awesome`
+
 First, clone this repositry by running the following in your terminal (`bash` or `zsh`):
 
 ```sh
@@ -19,11 +21,11 @@ git clone 'https://github.com/ReadyWidgets/awesome-extrautils' "${XDG_CONFIG_HOM
 Next, edit your `rc.lua` to load Extrautils:
 
 ```lua
-----------------------------------------------------------
---- File: "${XDG_CONFIG_HOME:-$HOME/.config}/awesome/" ---
-----------------------------------------------------------
+----------------------------------------------------------------
+--- File: "${XDG_CONFIG_HOME:-$HOME/.config}/awesome/rc.lua" ---
+----------------------------------------------------------------
 
---- Load Extrautils; note the brackets at the end, you can pass a
+--- Load Extrautils; notice the brackets at the end, you can pass a
 --- custom path if you have them stored elsewhere.
 local extrautils = require("extrautils")()
 ```

@@ -1,4 +1,5 @@
 local luamath = math
+local luafloor = math.floor
 
 local extrautils_table = require("extrautils.table")
 
@@ -6,7 +7,17 @@ local extrautils_table = require("extrautils.table")
 local math = extrautils_table.create()
 
 function math.round(x)
-	return luamath(x + 0.5)
+	return luafloor(x + 0.5)
+end
+
+function math.clamp(value, floor, ceiling)
+	if value < floor then
+		return ceiling
+	elseif value > ceiling then
+		return floor
+	end
+
+	return value
 end
 
 return math

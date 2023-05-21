@@ -6,8 +6,8 @@ return setmetatable({}, {
 		error([[
 <b>ERROR</b>: You attempted to directly index into ]] .. module_directory_name .. [[.
 
-Loading ]] .. module_directory_name .. [[ using `require()` does not return a table. Instead,
-it returns a function that you need to call, optionally with. This is done to allow you to install it
+Loading ]] .. module_directory_name .. [[ using `require()` does not return a table. Instead, it returns a function
+that you need to call, optionally with. This is done to allow you to install it
 in any directory, rather than a hard-coded one.
 ]])
 	end,

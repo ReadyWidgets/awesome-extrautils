@@ -1,4 +1,5 @@
 local luastring = string
+local lchar = luastring.char
 
 local extrautils_table = require("extrautils.table")
 
@@ -26,6 +27,42 @@ end
 
 function string.is_empty(str)
 	return (not str) or (str == "")
+end
+
+local function numbered_escape(str, i)
+	return str:gsub(lchar(i), "\\" .. tostring(i))
+end
+
+--- Replace escape sequences, like a newline, with their litteral representation, like `"\n"`.
+---
+--- ---
+---
+---@param str string The string to escape
+---@return string str_escaped The escaped version of `str`
+function string.escape(str)
+	str = str
+		:gsub("\\", [[\\]])
+		:gsub("\a", [[\a]])
+		:gsub("\b", [[\b]])
+		:gsub("\f", [[\f]])
+		:gsub("\n", [[\n]])
+		:gsub("\r", [[\r]])
+		:gsub("\t", [[\t]])
+		:gsub("\v", [[\v]])
+		:gsub("\"", [[\"]])
+		:gsub("\'", [[\']])
+		:gsub("\127", [[\127]]) -- DEL / delete key
+
+	--- See: https://www.asciitable.com/
+	for i = 1, 26 do
+		str = numbered_escape(str, i)
+	end
+
+	for i = 28, 31 do
+		str = numbered_escape(str, i)
+	end
+
+	return str
 end
 
 return string
