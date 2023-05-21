@@ -22,6 +22,7 @@ in any directory, rather than a hard-coded one.
 			end
 		end
 
+		--[[
 		if (module_directory_name) and (not script_dir) then
 			local pwd = io.popen("pwd")
 
@@ -35,10 +36,11 @@ in any directory, rather than a hard-coded one.
 				script_dir = current_directory .. "/" .. module_directory_name
 			end
 		end
+		--]]
 
 		if not script_dir then
 			script_dir = debug
-				.getinfo(2, "S")
+				.getinfo(1, "S")
 				.source
 				:sub(2)
 				:match("(.*/)")
