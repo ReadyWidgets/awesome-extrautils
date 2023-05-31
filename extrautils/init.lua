@@ -4,6 +4,7 @@ extrautils.mt.__index = extrautils.mt
 setmetatable(extrautils, extrautils.mt)
 
 extrautils.apps = require("extrautils.apps")
+extrautils.asyncio = require("extrautils.asyncio")
 extrautils.awesome = require("extrautils.awesome")
 extrautils.capi = require("extrautils.capi")
 extrautils.class = require("extrautils.class")
@@ -19,6 +20,7 @@ extrautils.verification = require("extrautils.verification")
 
 local sub_modules = {
 	"apps",
+	"asyncio",
 	"awesome",
 	"capi",
 	"class",

@@ -16,4 +16,16 @@ collection.Enum = class.create("extrautils.collection.Enum", {
 	end
 })
 
+collection.Set = class.create("extrautils.collection.Set", {
+	__init = function(self, tb)
+		for _, v in pairs(tb) do
+			if self[v] ~= nil then
+				error("ERROR: Attempted to assign set field \"" .. tostring(v) .. "\" multiple times!")
+			end
+
+			self[v] = true
+		end
+	end
+})
+
 return collection

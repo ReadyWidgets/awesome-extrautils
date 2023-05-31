@@ -9,6 +9,7 @@
 ---@field FileCreateFlags lgi.Gio.FileCreateFlags
 ---@field FileQueryInfoFlags lgi.Gio.FileQueryInfoFlags
 ---@field Icon lgi.Gio.Icon
+---@field Settings lgi.Gio.Settings
 local Gio = {}
 
 return Gio

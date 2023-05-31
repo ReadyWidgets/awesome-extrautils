@@ -40,17 +40,9 @@ local class_meta = {
 
 		local parent = rawget(cls, "__parent")
 
-		if not parent then
-			return
+		if parent then
+			return parent.__base[key]
 		end
-
-		local parent_base = parent.__base or parent
-
-		if not parent_base then
-			return
-		end
-
-		return parent_base[key]
 	end,
 
 	__call = function(cls, ...)
@@ -60,7 +52,15 @@ local class_meta = {
 	end,
 
 	__tostring = function(cls)
-		return "<class \"" .. tostring(cls.__name) .. "\">"
+		local result = "<class \"" .. tostring(cls.__name) .. "\""
+
+		local parent = rawget(cls, "__parent")
+
+		if not parent then
+			return result .. ">"
+		end
+
+		return result .. " (child of " .. tostring(parent) .. ")>"
 	end
 }
 
@@ -76,16 +76,10 @@ local function base_indexer(self, key)
 		end
 	end
 
-	do
-		local p = cls.__parent
+	local parent = cls.__parent
 
-		if not p then
-			return
-		end
-
-		local parent_base = p.__base or p
-
-		return parent_base[key]
+	if parent then
+		return parent.__base[key]
 	end
 end
 
@@ -118,7 +112,9 @@ function class.create(name, base, parent)
 	verification.parameter_type("create_class", 2, "base", "table", base)
 
 	if parent then
-		local parent_base = parent.__base or parent
+		local parent_base = parent.__base
+
+		assert(parent_base, "ERROR: The parent given to '' appears to not be a class")
 
 		for k, v in pairs(parent_base) do
 			if base[k] == nil and k:match("^__") and not (k == "__index" and v == parent_base) then
@@ -157,15 +153,17 @@ end
 ---@param cls AwesomeExtrautils.class.Class
 ---@return boolean
 local function isinstance(instance, cls)
-	if not instance.__class then
+	local instance_cls = instance.__class
+
+	if not instance_cls then
 		return false
 	end
 
-	if instance.__class == cls then
+	if instance_cls == cls then
 		return true
 	end
 
-	local parent = instance.__class.__parent
+	local parent = instance_cls.__parent
 
 	if not parent then
 		return false

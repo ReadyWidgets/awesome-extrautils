@@ -109,22 +109,6 @@ apps.pretty_category_names = {
 	Other       = "Other",
 }
 
--- TODO: Turn the data from the function below into an `extrautils.class`
-
----@alias AwesomeExtrautils.apps.AppData.args {name: string, description: string, categories: string[], launch: fun(), icon: (string|nil), display: boolean, filename: string, gappinfo: lgi.Gio.DesktopAppInfo}
-
----@class AwesomeExtrautils.apps.AppData : AwesomeExtrautils.class.Object
----@field __class AwesomeExtrautils.apps.AppData.__class
----@field from_gappinfo fun(cls: AwesomeExtrautils.apps.AppData.__class, gappinfo: lgi.Gio.DesktopAppInfo): AwesomeExtrautils.apps.AppData
----@field name string
----@field description string
----@field categories string[]
----@field launch fun()
----@field icon string|nil
----@field display boolean
----@field filename string
----@field gappinfo lgi.Gio.DesktopAppInfo
-
 local function smart_tostring(obj)
 	local type_tb = type(obj)
 
@@ -159,10 +143,26 @@ local function smart_tostring(obj)
 	return tostring(obj)
 end
 
+---@alias AwesomeExtrautils.apps.AppData.args {name: string, description: string, categories: string[], launch: fun(), icon: (string|nil), show: boolean, filename: string, gappinfo: lgi.Gio.DesktopAppInfo}
+
+---@class AwesomeExtrautils.apps.AppData : AwesomeExtrautils.class.Object
+---@field __class AwesomeExtrautils.apps.AppData.__class
+---@field from_gappinfo fun(cls: AwesomeExtrautils.apps.AppData.__class, gappinfo: lgi.Gio.DesktopAppInfo): AwesomeExtrautils.apps.AppData
+---@field from_desktop_id fun(cls: AwesomeExtrautils.apps.AppData.__class, desktop_id: string): AwesomeExtrautils.apps.AppData
+---@field name string
+---@field description string
+---@field categories string[]
+---@field launch fun()
+---@field icon string|nil
+---@field show boolean
+---@field filename string
+---@field gappinfo lgi.Gio.DesktopAppInfo
+
 ---@class AwesomeExtrautils.apps.AppData.__class : AwesomeExtrautils.class.Class
 ---@operator call(AwesomeExtrautils.apps.AppData.args): AwesomeExtrautils.apps.AppData
 ---@field __init fun(args: AwesomeExtrautils.apps.AppData.args): AwesomeExtrautils.apps.AppData
 ---@field from_gappinfo fun(cls: AwesomeExtrautils.apps.AppData.__class, gappinfo: lgi.Gio.DesktopAppInfo): AwesomeExtrautils.apps.AppData
+---@field from_desktop_id fun(cls: AwesomeExtrautils.apps.AppData.__class, desktop_id: string): AwesomeExtrautils.apps.AppData
 apps.AppData = class.create("extrautils.apps.AppData", {
 	---@param self AwesomeExtrautils.apps.AppData
 	---@param args AwesomeExtrautils.apps.AppData.args
@@ -204,13 +204,18 @@ apps.AppData = class.create("extrautils.apps.AppData", {
 			categories = gappinfo:get_string_list("Categories"),
 			launch = function() return gappinfo:launch() end,
 			icon = (gicon) and (apps.lookup_gicon(gicon)),
-			display = (not gappinfo:get_boolean("NoDisplay")) and (gappinfo:get_show_in()), ---@type boolean
+			show = (not gappinfo:get_boolean("NoDisplay")) and (gappinfo:get_show_in()), ---@type boolean
 			filename = gappinfo:get_filename(),
+			desktop_id = gappinfo:get_filename():match("^.*/(.*%.desktop)$"),
 			gappinfo = gappinfo,
 		}
 
 		return self
-	end
+	end,
+
+	from_desktop_id = function(cls, desktop_id)
+		return cls:from_gappinfo(Gio.DesktopAppInfo.new(desktop_id))
+	end,
 })
 
 local AppData = apps.AppData
@@ -252,9 +257,10 @@ end
 
 ---@type AwesomeExtrautils.apps.AppData[]
 local all_apps_cached
+---@param unached? boolean
 ---@return AwesomeExtrautils.apps.AppData[]
-function apps.get_all()
-	if all_apps_cached then
+function apps.get_all(unached)
+	if (not unached) and all_apps_cached then
 		return all_apps_cached
 	end
 
@@ -294,7 +300,7 @@ function apps.get_all_categorized(app_list)
 	local categorized_apps = {}
 
 	for _, app in ipairs(app_list) do
-		if not app.display then
+		if not app.show then
 			goto app_was_categorized
 		end
 
@@ -330,6 +336,47 @@ function apps.get_all_categorized(app_list)
 	end
 
 	return categorized_apps
+end
+
+local function has_schema(schema)
+	for _, s in ipairs(Gio.Settings.list_schemas() --[[@as (string[])]]) do
+		if s == schema then
+			return true
+		end
+	end
+
+	return false
+end
+
+---@return AwesomeExtrautils.apps.AppData[]
+function apps.get_gnome_favorites()
+	local shell_schema = "org.gnome.shell"
+	local favorites = {}
+
+	if not has_schema(shell_schema) then
+		return {}
+	end
+
+	for _, desktop_id in ipairs(Gio.Settings({ schema = shell_schema }):get_strv("favorite-apps") --[[@as (string[])]]) do
+		favorites[#favorites+1] = AppData:from_desktop_id(desktop_id)
+	end
+
+	return favorites
+end
+
+function apps.set_gnome_favorites(favorites)
+	do
+		local type_favorites = type(favorites)
+		assert(type_favorites == "table", "ERROR: Wrong parameter #1 to function apps.set_gnome_favorites (expected table, got: " .. type_favorites .. ")")
+	end
+
+	local shell_schema = "org.gnome.shell"
+
+	if not has_schema(shell_schema) then
+		return
+	end
+
+	Gio.Settings({ schema = shell_schema }):set_strv("favorite-apps", favorites)
 end
 
 return apps

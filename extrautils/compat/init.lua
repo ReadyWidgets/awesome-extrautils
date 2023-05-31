@@ -7,6 +7,10 @@ function compat.get_version()
 	return tonumber(_VERSION:match("[%d.]+"))
 end
 
-compat.unpack = unpack or table.unpack
+compat.unpack = table.unpack or unpack
+
+compat.pack = table.pack or function(...)
+	return { n = select("#", ...), ... }
+end
 
 return compat
