@@ -38,7 +38,7 @@ end
 ---@field run fun(self: AwesomeExtrautils.asyncio.Task, callback?: fun(self: AwesomeExtrautils.asyncio.Task))
 ---@field is_dead fun(self: AwesomeExtrautils.asyncio.Task): boolean
 ---@field run_until_finished fun(self: AwesomeExtrautils.asyncio.Task, callback?: fun(self: AwesomeExtrautils.asyncio.Task))
----@field resume fun(self: AwesomeExtrautils.asyncio.Task): boolean, ...
+---@field resume fun(self: AwesomeExtrautils.asyncio.Task): ...
 ---@field was_run boolean
 
 ---@class AwesomeExtrautils.asyncio.Task : AwesomeExtrautils.asyncio.__base, AwesomeExtrautils.class.Object
@@ -65,13 +65,13 @@ asyncio.Task = class.create("asyncio.Task", {
 	end,
 
 	---@param self AwesomeExtrautils.asyncio.Task
-	---@return boolean, ...
+	---@return ...
 	resume = function(self)
 		if self:is_dead() then
-			return false
+			return
 		end
 
-		return true, coroutine.resume(self.coroutine, unpack(self.args, 1, self.args_length))
+		return coroutine.resume(self.coroutine, unpack(self.args, 1, self.args_length))
 	end,
 
 	---@param self AwesomeExtrautils.asyncio.Task
@@ -83,7 +83,7 @@ asyncio.Task = class.create("asyncio.Task", {
 
 		self.was_run = true
 
-		return Gio.Async.start(function()
+		return async_start(function()
 			print("Executed Task.run()")
 			self:resume()
 
@@ -102,7 +102,7 @@ asyncio.Task = class.create("asyncio.Task", {
 
 		self.was_run = true
 
-		return Gio.Async.start(function()
+		return async_start(function()
 			print("Executed Task.run_until_finished()")
 
 			while not self:is_dead() do
@@ -116,6 +116,8 @@ asyncio.Task = class.create("asyncio.Task", {
 		end)()
 	end,
 })
+
+---@alias AwesomeExtrautils.asyncio.AsnycFunctionWithCallback fun(callback: fun(...))
 
 ---@alias AwesomeExtrautils.asyncio.AsyncFunction fun(...): AwesomeExtrautils.asyncio.Task
 
@@ -135,12 +137,6 @@ function asyncio.async(fn)
 	end
 end
 
-function asyncio.async_run(fn, ...)
-	local task = asyncio.async(fn)(...)
-
-	task:run()
-end
-
 ---@alias AwesomeExtrautils.asyncio.AsyncResult fun(callback: fun(success: boolean, ...))
 
 --- Await a `asyncio.Thread`'s completion. This will pause the calling `asyncio.Thread`
@@ -148,60 +144,102 @@ end
 ---
 --- ---
 ---
----@param task AwesomeExtrautils.asyncio.Task
+---@param task AwesomeExtrautils.asyncio.AsnycFunctionWithCallback|AwesomeExtrautils.asyncio.Task
 function asyncio.await(task)
 	local caller = coroutine.running()
 
-	task:run_until_finished(function(self)
-		try(function()
-			if (not caller) or (coroutine.status(caller) == "dead") then
-				return
-			end
+	if type(task) == "function" then
+		--async_start(function()
+		--	coroutine.resume(caller, task())
+		--end)()
 
-			print("Resuming from finished await() call...")
-			coroutine.resume(caller)
+		async_start(task)(function(...)
+			coroutine.resume(caller, ...)
 		end)
-	end)
+	else
+		asyncio.run(task, caller)
+	end
 
-	print("Yielding from await() call..")
+	--print("Yielding from await() call..")
 	return coroutine.yield()
 end
 
----@param timeout_seconds number
-asyncio.sleep = asyncio.async(function(timeout_seconds)
-	local timeout_ms = timeout_seconds * 1000
-
+---@param tasks (AwesomeExtrautils.asyncio.AsnycFunctionWithCallback|AwesomeExtrautils.asyncio.Task)[]
+function asyncio.await_all(tasks)
 	local caller = coroutine.running()
 
-	GLib.timeout_add(0, timeout_ms, function()
-		coroutine.resume(caller)
-	end)
+	local results = {}
+	local task_counter = #tasks
 
+	for _, task in ipairs(tasks) do
+		if type(task) == "function" then
+			async_start(task)(function(...)
+				task_counter = task_counter - 1
+				print("task_counter = " .. tostring(task_counter))
+				results[#results+1] = pack(...)
+
+				if task_counter == 0 then
+					coroutine.resume(caller, ...)
+				end
+			end)
+		else
+			asyncio.run(task, caller)
+		end
+	end
+
+	--print("Yielding from await() call..")
 	return coroutine.yield()
-end)
+end
 
---[===[
----comment
+--- Start executing a task
+---@param task AwesomeExtrautils.asyncio.Task
+---@param caller? thread
+function asyncio.run(task, caller)
+	return async_start(function ()
+		local results
+		--while not task:is_dead() do
+			results = pack(task:resume())
+		--end
+
+		if caller then
+			coroutine.resume(caller, unpack(results))
+		end
+	end)()
+end
+
+--- Create a Task and run it immediatley
+---@param fn fun(...)
+---@param ... unknown
+function asyncio.async_run(fn, ...)
+	local task = asyncio.Task(fn, ...)
+
+	return asyncio.run(task)
+end
+
+---@param timeout_seconds number
+function asyncio.sleep(timeout_seconds)
+	local timeout_ms = timeout_seconds * 1000
+
+	return function(callback)
+		GLib.timeout_add(0, timeout_ms, function()
+			callback()
+		end)
+	end
+end
+
 ---@param fn fun(..., callback: fun(...))
----@param no_explicit_success_param? boolean
+---@param explicit_success_param? boolean
 ---@return fun(...): AwesomeExtrautils.asyncio.AsyncResult
-function asyncio.wrap(fn, no_explicit_success_param)
+function asyncio.wrap(fn, explicit_success_param)
 	return function(...)
 		local args = pack(...)
 		local args_len = select("#", ...) + 1
 
 		return function(callback)
-			--local _callback = callback
-			--callback = function(...)
-			--	print("\027[1;34mINFO:\027[0m Running callback!")
-			--	print("args:", ...)
-			--	return _callback(...)
-			--end
-
 			return try(function()
-				args[args_len] = (no_explicit_success_param == false) and callback or function(...)
+				args[args_len] = explicit_success_param and (function(...)
 					return callback(true, ...)
-				end
+				end) or callback
 
 				fn(unpack(args, 1, args_len))
 			end)
@@ -234,6 +272,44 @@ do
 	end)
 
 	::no_awesome::
+end
+
+--[===[
+do
+	local loop = GLib.MainLoop() ---@type lgi.GLib.MainLoop
+
+	local task_count = 0
+
+	local task = asyncio.async(function(msg)
+		task_count = task_count + 1
+
+		print("Start!")
+
+		asyncio.await(asyncio.sleep(1))
+
+		print("msg = \"" .. tostring(msg) .. "\"")
+
+		asyncio.await_all({
+			asyncio.sleep(1),
+			asyncio.sleep(1),
+			asyncio.sleep(1),
+		})
+
+		print("End!")
+
+		task_count = task_count - 1
+
+		if task_count == 0 then
+			print("No more tasks queued up - exiting!")
+			loop:quit()
+		end
+	end)
+
+	--asyncio.run(task())
+	asyncio.run(task("Foo"))
+	--asyncio.run(task("Bar"))
+
+	loop:run()
 end
 --]===]
 

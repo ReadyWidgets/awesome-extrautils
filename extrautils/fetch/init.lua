@@ -12,22 +12,54 @@ local async, await, async_run = asyncio.async, asyncio.await, asyncio.async_run
 ---@class AwesomeExtrautils.fetch : AwesomeExtrautils.Table
 local fetch = extrautils_table.create()
 
+---@generic T1, T2
+---@param fn fun(...: T1): (nil|T2), ...
+---@param ... T1
+---@return (nil|T2), ...
+local function try(fn, ...)
+	local args = { ... }
+
+	local result
+
+	xpcall(function()
+		result = { fn(unpack(args)) }
+	end, function(err)
+		print(debug.traceback("\027[1;31mERROR in " .. tostring(err) .. "\027[0m"))
+	end)
+
+	return unpack(result)
+end
+
 local read_data_input_stream_line_async = file.create_async_wrapper(
 	"read_line",
 	{ 0, nil },
-	2
+	2,
+	nil,
+	function(f, callback)
+		return callback(f)
+	end
 )
 
 --- Get all lines of a Gio.DataInputStream as a string
 ---@param data_input_stream lgi.Gio.DataInputStream
----@param callback AwesomeExtrautils.asyncio.AsyncResult
-local get_all_lines = async(function(data_input_stream, callback)
+local get_all_lines = asyncio.wrap(function(data_input_stream, callback)
 	local all_lines
 
+	local newline = "\n" -- data_input_stream:get_newline_type() == 0
+
+	do
+		local newline_type = data_input_stream:get_newline_type()
+
+		if newline_type == 1 then
+			newline = "\r"
+		elseif newline_type == 2 then
+			newline = "\r\n"
+		end
+	end
+
 	while true do
-		--print("   - Awaiting current line...")
 		local current_line = await(read_data_input_stream_line_async(data_input_stream))
-		--print("   - Got line '" .. tostring(line) .. "'")
+		print("   - current_line = " .. tostring(current_line))
 
 		if current_line == nil then
 			break
@@ -36,15 +68,15 @@ local get_all_lines = async(function(data_input_stream, callback)
 		if all_lines == nil then
 			all_lines = current_line
 		else
-			all_lines = all_lines .. "\n" .. current_line
+			all_lines = all_lines .. newline .. current_line
 		end
 	end
 
 	all_lines = (all_lines or "") -- :gsub("\r\n", "\n")
 
 	print("   - Got all lines!")
-	print("     - [[" .. all_lines:gsub("\n", "\n       ") .. "]]")
-	print("   - Running callback '" .. tostring(callback) .. "'...")
+	--print("     - [[" .. all_lines:gsub(newline, newline.."       ") .. "]]")
+
 	return callback(all_lines)
 end)
 
@@ -59,31 +91,33 @@ local read_file_from_uri_async = file.create_async_wrapper(
 	end,
 	function(f, callback)
 		if type(f) == "string" then
-			f = Gio.File.new_for_uri(f)
+			f = new_file_for_uri(f)
 		end
 
 		return callback(f)
 	end
 )
 
-fetch.read_file_from_url = asyncio.wrap(function(f, callback)
-	--xpcall(function()
-		print(" - Reading file '" .. tostring(f) .. "'...")
-		local file_read = await(read_file_from_uri_async(f))
+fetch.read_file_from_url = asyncio.async(function(f)
+	print(" - Reading file '" .. tostring(f) .. "'...")
+	local file_read = await(read_file_from_uri_async(f))
+	print(" - file_read = " .. tostring(file_read))
 
-		print(" - Creating data input stream...")
-		local data_input_stream = new_data_input_stream(file_read)
+	print(" - Creating data input stream...")
+	local data_input_stream = new_data_input_stream(file_read)
 
-		print(" - Retrieving lines")
-		local all_lines = await(get_all_lines(data_input_stream))
+	print(" - data_input_stream = " .. tostring(data_input_stream))
 
-		print(" - Printing lines...")
-		print(all_lines)
-
-		return callback(all_lines)
-	--end, function(err)
-	--	print(debug.traceback("\027[1;31mERROR\027[0m in " .. tostring(err)))
+	print(" - Retrieving lines")
+	--local all_lines
+	--try(function()
+	local all_lines = await(get_all_lines(data_input_stream))
 	--end)
+
+	print(" - Printing lines...")
+	print(all_lines)
+
+	return all_lines
 end)
 
 --print(
@@ -96,14 +130,18 @@ end)
 
 local loop = lgi.GLib.MainLoop()
 
-async_run(function()
-	-- TODO: Doesn't work...
+local task = async(function(url)
 	print(" - Awaiting call to fetch.read_file_from_url()...")
-	await(fetch.read_file_from_url("https://jsonplaceholder.typicode.com/todos/1"))
+
+	try(function()
+		print(await(fetch.read_file_from_url(url)))
+	end)
 
 	print(" - All done!")
 	loop:quit()
 end)
+
+asyncio.run(task("https://jsonplaceholder.typicode.com/todos/1"))
 
 loop:run()
 

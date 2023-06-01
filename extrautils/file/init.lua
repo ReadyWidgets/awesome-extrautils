@@ -66,7 +66,7 @@ function file.create_async_wrapper(method_name, method_args, method_args_length,
 			)
 		end, log_error)
 
-		return callback(success, result)
+		return callback(--[[success, ]]result)
 	end
 
 	local function impl(gfile, callback)
