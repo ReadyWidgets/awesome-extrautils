@@ -35,15 +35,13 @@ local function try(fn)
 end
 
 ---@class AwesomeExtrautils.asyncio.__base
----@field run fun(self: AwesomeExtrautils.asyncio.Task, callback?: fun(self: AwesomeExtrautils.asyncio.Task))
----@field is_dead fun(self: AwesomeExtrautils.asyncio.Task): boolean
----@field run_until_finished fun(self: AwesomeExtrautils.asyncio.Task, callback?: fun(self: AwesomeExtrautils.asyncio.Task))
----@field resume fun(self: AwesomeExtrautils.asyncio.Task): ...
----@field was_run boolean
+---@field start fun(self: AwesomeExtrautils.asyncio.Task): ...
+---@field try_resume_caller fun(self: AwesomeExtrautils.asyncio.Task, results: table<integer, any>)
 
 ---@class AwesomeExtrautils.asyncio.Task : AwesomeExtrautils.asyncio.__base, AwesomeExtrautils.class.Object
 ---@field __class AwesomeExtrautils.asyncio.Task.__class
 ---@field coroutine thread
+---@field caller thread
 ---@field args table<integer, any>
 ---@field args_length integer
 
@@ -54,66 +52,28 @@ asyncio.Task = class.create("asyncio.Task", {
 	---@param self AwesomeExtrautils.asyncio.Task
 	---@param fn function
 	__init = function(self, fn, ...)
-		self.coroutine = coroutine.create(fn)
+		self.coroutine = coroutine.create(function(...)
+			local results = pack(fn(...))
+
+			self:try_resume_caller(results)
+		end)
+		self.caller = coroutine.running()
 		self.args = pack(...)
 		self.args_length = select("#", ...)
-		self.was_run = false
-	end,
-
-	is_dead = function(self)
-		return coroutine.status(self.coroutine) == "dead"
 	end,
 
 	---@param self AwesomeExtrautils.asyncio.Task
 	---@return ...
-	resume = function(self)
-		if self:is_dead() then
-			return
-		end
-
+	start = function(self)
 		return coroutine.resume(self.coroutine, unpack(self.args, 1, self.args_length))
 	end,
 
 	---@param self AwesomeExtrautils.asyncio.Task
-	run = function(self, callback)
-		if self.was_run then
-			print("NOPE!")
-			return
+	---@param results table<integer, any>
+	try_resume_caller = function(self, results)
+		if self.caller and (coroutine.status(self.caller) == "suspended") then
+			coroutine.resume(self.caller, unpack(results))
 		end
-
-		self.was_run = true
-
-		return async_start(function()
-			print("Executed Task.run()")
-			self:resume()
-
-			if callback then
-				callback(self)
-			end
-		end)()
-	end,
-
-	---@param self AwesomeExtrautils.asyncio.Task
-	run_until_finished = function(self, callback)
-		if self.was_run then
-			print("NOPE!")
-			return
-		end
-
-		self.was_run = true
-
-		return async_start(function()
-			print("Executed Task.run_until_finished()")
-
-			while not self:is_dead() do
-				print("Resuming...")
-				self:resume()
-			end
-
-			if callback then
-				callback(self)
-			end
-		end)()
 	end,
 })
 
@@ -122,10 +82,10 @@ asyncio.Task = class.create("asyncio.Task", {
 ---@alias AwesomeExtrautils.asyncio.AsyncFunction fun(...): AwesomeExtrautils.asyncio.Task
 
 --- Create a new asynchronous function. An asynchronous function is a function that,
---- when executed, will return a new `asyncio.Thread` instance. Any arguments passed
---- into an asynchronous function get passed to the `asyncio.Thread` constructor and
+--- when executed, will return a new `asyncio.Task` instance. Any arguments passed
+--- into an asynchronous function get passed to the `asyncio.Task` constructor and
 --- stored inside the object instance. Each time the coroutine stored within the
---- `asyncio.Thread` gets resumes, it will be passed the arguments again.
+--- `asyncio.Task` gets resumes, it will be passed the arguments again.
 ---
 --- ---
 ---
@@ -139,8 +99,10 @@ end
 
 ---@alias AwesomeExtrautils.asyncio.AsyncResult fun(callback: fun(success: boolean, ...))
 
---- Await a `asyncio.Thread`'s completion. This will pause the calling `asyncio.Thread`
---- until the `asyncio.Thread` passed to `asyncio.await` has been completed.
+--local __await_counter = 0
+
+--- Await a `asyncio.Task`'s completion. This will pause the calling `asyncio.Task`
+--- until the `asyncio.Task` passed to `asyncio.await` has been completed.
 ---
 --- ---
 ---
@@ -148,20 +110,18 @@ end
 function asyncio.await(task)
 	local caller = coroutine.running()
 
-	print("Yielding from await() call..")
 
 	if type(task) == "function" then
-		--async_start(function()
-		--	coroutine.resume(caller, task())
-		--end)()
-
-		return coroutine.yield(async_start(task)(function(...)
-			print("Resuming task - " .. tostring(coroutine.status(caller)))
+		async_start(task)(function(...)
 			coroutine.resume(caller, ...)
-		end))
+		end)
+	else
+		async_start(function()
+			coroutine.resume(caller, task:start())
+		end)()
 	end
 
-	return coroutine.yield(asyncio.run(task, caller))
+	return coroutine.yield(task)
 end
 
 ---@param tasks (AwesomeExtrautils.asyncio.AsnycFunctionWithCallback|AwesomeExtrautils.asyncio.Task)[]
@@ -195,16 +155,12 @@ end
 ---@param task AwesomeExtrautils.asyncio.Task
 ---@param caller? thread
 function asyncio.run(task, caller)
-	return async_start(function ()
-		local results
-		--while not task:is_dead() do
-			results = pack(task:resume())
-		--end
+	local results = pack(task:start())
 
-		if caller then
-			coroutine.resume(caller, unpack(results))
-		end
-	end)()
+	if caller then
+		print("Resuming caller \"" .. tostring(caller) .. "\" now...")
+		return coroutine.resume(caller, unpack(results))
+	end
 end
 
 --- Create a Task and run it immediatley
