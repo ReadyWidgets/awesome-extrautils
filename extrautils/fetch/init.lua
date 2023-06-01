@@ -77,7 +77,7 @@ local get_all_lines = asyncio.wrap(function(data_input_stream, callback)
 	print("   - Got all lines!")
 	--print("     - [[" .. all_lines:gsub(newline, newline.."       ") .. "]]")
 
-	return callback(all_lines)
+	return callback(all_lines, newline)
 end)
 
 local read_file_from_uri_async = file.create_async_wrapper(
@@ -111,11 +111,11 @@ fetch.read_file_from_url = asyncio.async(function(f)
 	print(" - Retrieving lines")
 	--local all_lines
 	--try(function()
-	local all_lines = await(get_all_lines(data_input_stream))
+	local all_lines, newline = await(get_all_lines(data_input_stream))
 	--end)
 
 	print(" - Printing lines...")
-	print(all_lines)
+	print("     |"..all_lines:gsub(newline, newline.."     |"))
 
 	return all_lines
 end)
@@ -133,9 +133,9 @@ local loop = lgi.GLib.MainLoop()
 local task = async(function(url)
 	print(" - Awaiting call to fetch.read_file_from_url()...")
 
-	try(function()
+	--try(function()
 		print(await(fetch.read_file_from_url(url)))
-	end)
+	--end)
 
 	print(" - All done!")
 	loop:quit()

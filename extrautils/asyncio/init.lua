@@ -148,20 +148,20 @@ end
 function asyncio.await(task)
 	local caller = coroutine.running()
 
+	print("Yielding from await() call..")
+
 	if type(task) == "function" then
 		--async_start(function()
 		--	coroutine.resume(caller, task())
 		--end)()
 
-		async_start(task)(function(...)
+		return coroutine.yield(async_start(task)(function(...)
+			print("Resuming task - " .. tostring(coroutine.status(caller)))
 			coroutine.resume(caller, ...)
-		end)
-	else
-		asyncio.run(task, caller)
+		end))
 	end
 
-	--print("Yielding from await() call..")
-	return coroutine.yield()
+	return coroutine.yield(asyncio.run(task, caller))
 end
 
 ---@param tasks (AwesomeExtrautils.asyncio.AsnycFunctionWithCallback|AwesomeExtrautils.asyncio.Task)[]
