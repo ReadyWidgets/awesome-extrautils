@@ -21,7 +21,7 @@ local GLib = lgi.GLib
 
 local async_start = Gio.Async.start
 
----@class AwesomeExtrautils.asyncio : AwesomeExtrautils.Table
+---@class AwesomeExtrautils.asyncio : AwesomeExtrautils.table.Table
 local asyncio = extrautils_table.create()
 
 local function try(fn)

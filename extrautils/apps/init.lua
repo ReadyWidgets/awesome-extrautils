@@ -1,7 +1,7 @@
 local extrautils_table = require("extrautils.table")
 local class = require("extrautils.class")
 
----@class AwesomeExtrautils.apps : AwesomeExtrautils.Table
+---@class AwesomeExtrautils.apps : AwesomeExtrautils.table.Table
 local apps = extrautils_table.create()
 
 local lgi ---@type lgi
@@ -21,6 +21,7 @@ do
 	end
 end
 
+---@diagnostic disable-next-line: undefined-doc-name
 ---@type fun(surface_convertable): gears.surface
 local gsurface
 do

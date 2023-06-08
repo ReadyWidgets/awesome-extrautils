@@ -5,7 +5,7 @@ local extrautils_table = require("extrautils.table")
 
 local verification = require("extrautils.verification")
 
----@class AwesomeExtrautils.class : AwesomeExtrautils.Table
+---@class AwesomeExtrautils.class : AwesomeExtrautils.table.Table
 local class = extrautils_table.create()
 
 local object = {

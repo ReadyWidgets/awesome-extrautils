@@ -16,18 +16,34 @@ local GLib = lgi.GLib
 
 local async_start = Gio.Async.start
 
-local function log_error(err)
-	print(traceback("ERROR: " .. tostring(err)))
+local function log_error(err, level)
+	print(traceback("ERROR: " .. tostring(err), level))
 end
 
----@class AwesomeExtrautils.file : AwesomeExtrautils.Table
+---@generic T1, T2
+---@param fn fun(...: T1|nil): T2|nil
+---@param ... T1|nil
+---@return boolean success, T2|nil ...
+local function try(fn, ...)
+	local args = { ... }
+
+	return xpcall(function()
+		return fn(unpack(args))
+	end, function(err)
+		log_error(err, 5)
+	end)
+end
+
+local asyncio = require("extrautils.asyncio")
+
+---@class AwesomeExtrautils.file : AwesomeExtrautils.table.Table
 local file = extrautils_table.create()
 
 ---@generic T1
 ---@alias AwesomeExtrautils.file.Callback fun(success: boolean, result: T1)
 
 ---@generic T1
----@alias AwesomeExtrautils.file.AsyncFunction fun(f: string|lgi.Gio.File, callback?: AwesomeExtrautils.file.Callback<T1>): AwesomeExtrautils.asyncio.AsyncResult
+---@alias AwesomeExtrautils.file.AsyncFunction fun(f: string|lgi.Gio.File, callback?: AwesomeExtrautils.file.Callback<T1>): AwesomeExtrautils.asyncio.Task
 
 local function default_process_result(...)
 	return ...
@@ -57,16 +73,20 @@ function file.create_async_wrapper(method_name, method_args, method_args_length,
 	local function impl_inner(gfile, callback, async_result)
 		local result
 
-		local success = xpcall(function()
+		local success = try(function()
 			result = process_result(
 				gfile[method_name .. "_finish"](
 					gfile,
 					async_result
 				)
 			)
-		end, log_error)
+		end)
 
-		return callback(--[[success, ]]result)
+		if callback then
+			return callback(--[[success, ]]result)
+		end
+
+		return result
 	end
 
 	local function impl(gfile, callback)
@@ -86,9 +106,9 @@ function file.create_async_wrapper(method_name, method_args, method_args_length,
 			return impl_inner(gfile, callback, async_result)
 		end
 
-		return xpcall(function()
+		return try(function()
 			gfile[method_name .. "_async"](unpack(args, 1, args_length))
-		end, log_error)
+		end)
 	end
 
 	return function(f, callback)
@@ -102,40 +122,24 @@ function file.create_async_wrapper(method_name, method_args, method_args_length,
 			run(callback)
 		end
 
-		return run
+		--return asyncio.Task(function()
+		--	print("Awaiting async file function")
+		--	asyncio.await(run)
+		--	print("Finished async file function")
+		--end)
+		-- -@diagnostic disable-next-line: return-type-mismatch
+		return asyncio.Task(function()
+			local caller = coroutine.running()
+
+			async_start(get_gfile)(f, function(gfile)
+				async_start(impl)(gfile, function(...)
+					coroutine.resume(caller, ...)
+				end)
+			end)
+
+			return coroutine.yield()
+		end)
 	end
-end
-
----@param promises (fun(cb: AwesomeExtrautils.file.Callback, ...))[]
----@param callback fun(all_results: table<integer, any>)
----@param collected_results? table
----@param current_key? integer
-function file.chained_call(promises, callback, collected_results, current_key)
-	collected_results = collected_results or {}
-	local len = #collected_results
-
-	if next(promises, current_key) == nil then
-		return callback(collected_results)
-	end
-
-	local current_promise
-	current_key, current_promise = next(promises, current_key)
-
-	local promise_run, promise_callback = current_promise()
-	promise_run(function(success, result)
-		if not success then
-			print("ERROR: Something went wrong!")
-			return
-		end
-
-		if promise_callback then
-			promise_callback(success, result)
-		end
-
-		collected_results[len+1] = result
-
-		return file.chained_call(promises, callback, collected_results, current_key)
-	end)
 end
 
 --- # `public static async function file.is_directory()`
@@ -345,7 +349,8 @@ local function create_value_iterable()
 	})
 end
 
-local function __list_children_impl_inner(dir, result, callback, sort)
+--[[
+local function __list_children_impl_inner(dir, result, callback)
 	local files = create_value_iterable()
 
 	local success = xpcall(function()
@@ -360,16 +365,10 @@ local function __list_children_impl_inner(dir, result, callback, sort)
 		end
 	end, log_error)
 
-	if sort then
-		table.sort(files, function(a, b)
-			return a:get_basename():lower() < b:get_basename():lower()
-		end)
-	end
-
 	return callback(success, files)
 end
 
-local function __list_children_impl(path, callback, sort)
+local function __list_children_impl(path, callback)
 	local dir
 
 	if type(path) ~= "string" then
@@ -387,11 +386,12 @@ local function __list_children_impl(path, callback, sort)
 			0,
 			nil,
 			function(_, result)
-				__list_children_impl_inner(dir, result, callback, sort)
+				__list_children_impl_inner(dir, result, callback)
 			end
 		)
 	end, log_error)
 end
+--]]
 
 --- # `public static async function file.list_children()`
 ---
@@ -430,20 +430,51 @@ end
 ---
 ---@param f string|lgi.Gio.File The full path to the directory you want to get a list of children of.
 ---@param sort boolean If `true`, the list of children will be sorted by their filepath.
----@param callback fun(success: boolean, children: lgi.Gio.File[]) A callback that will be called once the list of files has been retrieved.
----@overload fun(f: string|lgi.Gio.File, callback: fun(success: boolean, children: lgi.Gio.File[]))
+---@param callback fun(children: lgi.Gio.File[]) A callback that will be called once the list of files has been retrieved.
+---@overload fun(f: string|lgi.Gio.File, callback: fun(children: lgi.Gio.File[]))
 function file.list_children(f, sort, callback)
-	if sort ~= nil and callback == nil then
+	if (type(sort) == "function") and (callback == nil) then
 		---@diagnostic disable-next-line: cast-type-mismatch
-		---@cast sort fun(success: boolean, children: lgi.Gio.File[])
+		---@cast sort fun(children: lgi.Gio.File[])
 		callback = sort
 		sort = false
 	end
 
-	async_start(__list_children_impl)(f, callback, sort)
-end
---#endregion
+	--async_start(__list_children_impl)(f, callback, sort)
+	return file.create_async_wrapper(
+		"enumerate_children",
+		{ "standard::name,standard::type", Gio.FileQueryInfoFlags.NONE, 0, nil },
+		4,
+		function(result)
+			local children = create_value_iterable()
 
+			local info = result:next_file()
+
+			while info do
+				children[#children+1] = result:get_child(info)
+
+				info = result:next_file()
+			end
+
+			if sort then
+				table.sort(children, function(a, b)
+					return a:get_basename():lower() < b:get_basename():lower()
+				end)
+			end
+
+			return children
+		end,
+		function(f_, callback_)
+			file.default_get_gfile(f_, function(gfile)
+				file.is_directory_async(f_, function(is_directory)
+					assert(is_directory)
+					return callback_(gfile)
+				end)
+			end)
+		end
+	)(f, callback)
+end
+--[[
 file.list_children = file.create_async_wrapper(
 	"enumerate_children",
 	{ "standard::name,standard::type", Gio.FileQueryInfoFlags.NONE, 0, nil },
@@ -473,6 +504,8 @@ file.list_children = file.create_async_wrapper(
 		end)
 	end
 )
+--]]
+--#endregion
 
 ------------------------------------------------------------------------
 

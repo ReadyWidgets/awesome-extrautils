@@ -4,7 +4,7 @@ local extrautils_table = require("extrautils.table")
 
 local class = require("extrautils.class")
 
----@class AwesomeExtrautils.testing : AwesomeExtrautils.Table
+---@class AwesomeExtrautils.testing : AwesomeExtrautils.table.Table
 local testing = extrautils_table.create()
 
 local function print_bold(text)
@@ -20,7 +20,7 @@ local stroke = "--------------------------------------------------------------"
 ---@field run fun(self: AwesomeExtrautils.testing.Testcase)
 
 ---@class AwesomeExtrautils.testing.Testcase.__class : AwesomeExtrautils.class.Class
----@operator call(fun(), boolean): AwesomeExtrautils.testing.Testcase
+---@overload fun(callback: fun(), invert: boolean): AwesomeExtrautils.testing.Testcase
 ---@field __init fun(self: AwesomeExtrautils.testing.Testcase, callback: fun(), invert?: boolean): AwesomeExtrautils.testing.Testcase
 ---@field __parent AwesomeExtrautils.class.Class
 ---@field run fun(self: AwesomeExtrautils.testing.Testcase)

@@ -1,7 +1,7 @@
 ---@diagnostic disable: undefined-global
 local extrautils_table = require("extrautils.table")
 
----@class AwesomeExtrautils.capi : AwesomeExtrautils.Table
+---@class AwesomeExtrautils.capi : AwesomeExtrautils.table.Table
 local capi = extrautils_table.create()
 
 capi.awesome      = awesome

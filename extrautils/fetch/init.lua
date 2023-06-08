@@ -10,7 +10,7 @@ local file = require("extrautils.file")
 local asyncio = require("extrautils.asyncio")
 local async, await, async_run = asyncio.async, asyncio.await, asyncio.async_run
 
----@class AwesomeExtrautils.fetch : AwesomeExtrautils.Table
+---@class AwesomeExtrautils.fetch : AwesomeExtrautils.table.Table
 local fetch = extrautils_table.create()
 
 ---@generic T1, T2
@@ -104,6 +104,7 @@ fetch.read_file_from_url = async(function(f)
 	return all_lines, newline
 end)
 
+--[[
 do
 	local loop = lgi.GLib.MainLoop()
 
@@ -119,5 +120,6 @@ do
 
 	loop:run()
 end
+--]]
 
 return fetch

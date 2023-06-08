@@ -1,6 +1,6 @@
 local extrautils_table = require("extrautils.table")
 
----@class AwesomeExtrautils.compat : AwesomeExtrautils.Table
+---@class AwesomeExtrautils.compat : AwesomeExtrautils.table.Table
 local compat = extrautils_table.create()
 
 function compat.get_version()

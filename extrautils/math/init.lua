@@ -3,7 +3,7 @@ local luafloor = math.floor
 
 local extrautils_table = require("extrautils.table")
 
----@class AwesomeExtrautils.math : AwesomeExtrautils.Table
+---@class AwesomeExtrautils.math : AwesomeExtrautils.table.Table
 local math = extrautils_table.create()
 
 function math.round(x)

@@ -2,7 +2,7 @@ local assert = assert
 
 local extrautils_table = require("extrautils.table")
 
----@class AwesomeExtrautils.verification : AwesomeExtrautils.Table
+---@class AwesomeExtrautils.verification : AwesomeExtrautils.table.Table
 local verification = extrautils_table.create()
 
 ---

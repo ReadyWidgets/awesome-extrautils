@@ -1,6 +1,6 @@
 local extrautils_table = require("extrautils.table")
 
----@class AwesomeExtrautils.awesome : AwesomeExtrautils.Table
+---@class AwesomeExtrautils.awesome : AwesomeExtrautils.table.Table
 local awesome = extrautils_table.create()
 
 local awful, gears, wibox

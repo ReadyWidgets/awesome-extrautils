@@ -1,7 +1,7 @@
 local extrautils_table = require("extrautils.table")
 local class = require("extrautils.class")
 
----@class AwesomeExtrautils.color : AwesomeExtrautils.Table
+---@class AwesomeExtrautils.color : AwesomeExtrautils.table.Table
 local color = extrautils_table.create()
 
 color.Color = class.create("extrautils.color.Color", {

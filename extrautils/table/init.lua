@@ -3,21 +3,25 @@ local pairs = pairs
 local getmetatable = getmetatable
 local setmetatable = setmetatable
 
----@class AwesomeExtrautils.Table : table
+---@class AwesomeExtrautils.table.Table : table
 ---@field mt table
 
-local function new_Table(base, mt)
+---@generic T1 : table
+---@param base? table
+---@param mt? T1
+---@return AwesomeExtrautils.table.Table, T1
+local function new_table(base, mt)
 	base = {}
 	mt = mt or getmetatable(base) or {}
 	mt.__index = mt
 
 	base.mt = mt
 
-	return setmetatable(base, mt)
+	return setmetatable(base, mt), mt
 end
 
----@class AwesomeExtrautils.table : AwesomeExtrautils.Table
-local table = new_Table()
+---@class AwesomeExtrautils.table : AwesomeExtrautils.table.Table
+local table = new_table()
 
 --- Create a new table with a metatable pre-set, accessable through the ["mt"] field.
 --- The metatable has itself set as the `__index`.
@@ -27,11 +31,36 @@ local table = new_Table()
 ---
 --- ---
 ---
+---@generic T1 : table
 ---@param base? table
----@param mt? table
----@return AwesomeExtrautils.Table
+---@param mt? T1
+---@return AwesomeExtrautils.table.Table, T1
 function table.create(base, mt)
-	return new_Table(base, mt)
+	return new_table(base, mt)
+end
+
+---@param name string
+---@return table module, table metatable
+function table.create_module(name)
+	assert(name, "ERROR: Attempted to create a name without providing a name!")
+
+	local mod, mt = {}, {}
+	mod.__index = mod
+	mod.mt = mt
+	setmetatable(mod, mt)
+
+	mt.__index = mt
+	mt.__name = name
+	function mt:__call(...)
+		assert(self.new, "ERROR: Attempted to call a non-callable module!")
+
+		return self.new(...)
+	end
+	function mt:__tostring()
+		return "<module \"" .. self.__name "\">"
+	end
+
+	return mod, mt
 end
 
 --- Run a callback function for each field in a table, accumulating the results
@@ -54,7 +83,7 @@ function table.map(tb, callback)
 end
 
 --- Run a callback function for each field in a table. The field will be copied into
---- a new table, but only if the callback returns `true`.
+--- a new table (with the same key), but only if the callback returns `true`.
 ---
 --- ---
 ---
@@ -74,7 +103,7 @@ function table.filter(tb, callback)
 	return result
 end
 
---- Run a callback function for each field in a table, combining each field usinga a callback.
+--- Run a callback function for each field in a table, combining each field using that callback.
 ---
 --- ---
 ---
@@ -224,7 +253,12 @@ function table.get_longest_key_length(tb, stringify, use_value)
 	local longest_key_length = 0
 
 	for k, v in pairs(tb) do
-		local k_len = #stringify(use_value and v or k)
+		local k_len
+		if use_value then
+			k_len = #stringify(v)
+		else
+			k_len = #stringify(k)
+		end
 
 		if k_len > longest_key_length then
 			longest_key_length = k_len

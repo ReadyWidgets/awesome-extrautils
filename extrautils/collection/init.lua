@@ -1,7 +1,7 @@
 local extrautils_table = require("extrautils.table")
 local class = require("extrautils.class")
 
----@class AwesomeExtrautils.collection : AwesomeExtrautils.Table
+---@class AwesomeExtrautils.collection : AwesomeExtrautils.table.Table
 local collection = extrautils_table.create()
 
 collection.Enum = class.create("extrautils.collection.Enum", {

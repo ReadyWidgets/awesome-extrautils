@@ -8,7 +8,9 @@ end
 
 do
 	local tester = Tester("Testing class creation...")
+	---@diagnostic disable-next-line: missing-parameter
 	tester:add_case(Testcase(function() class.create()          end, true )) -- Misses a name
+	---@diagnostic disable-next-line: missing-parameter
 	tester:add_case(Testcase(function() class.create("Foo")     end, true )) -- Misses a base
 	tester:add_case(Testcase(function() class.create("Foo", {}) end, false)) -- Good!
 	tester:run()

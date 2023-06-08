@@ -3,7 +3,7 @@ local lchar = luastring.char
 
 local extrautils_table = require("extrautils.table")
 
----@class AwesomeExtrautils.string : AwesomeExtrautils.Table
+---@class AwesomeExtrautils.string : AwesomeExtrautils.table.Table
 local string = extrautils_table.create()
 
 function string.center(str, width, char)
@@ -63,6 +63,18 @@ function string.escape(str)
 	end
 
 	return str
+end
+
+---@param str string
+---@param data table<string, any>
+function string.format(str, data)
+	local result = str
+
+	for match in str:gmatch("%{([^%}]+)%}") do
+		result = result:gsub("%{" .. match .. "%}", data[match], 1)
+	end
+
+	return result
 end
 
 return string
