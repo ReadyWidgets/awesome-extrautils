@@ -57,7 +57,7 @@ function table.create_module(name)
 		return self.new(...)
 	end
 	function mt:__tostring()
-		return "<module \"" .. self.__name "\">"
+		return "<module \"" .. self.__name .. "\">"
 	end
 
 	return mod, mt
