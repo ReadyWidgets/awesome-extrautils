@@ -39,8 +39,9 @@ function table.create(base, mt)
 	return new_table(base, mt)
 end
 
+---@generic T1
 ---@param name string
----@return table module, table metatable
+---@return table module, (fun(key: string, object: T1): T1) export
 function table.create_module(name)
 	assert(name, "ERROR: Attempted to create a name without providing a name!")
 
@@ -60,7 +61,17 @@ function table.create_module(name)
 		return "<module \"" .. self.__name "\">"
 	end
 
-	return mod, mt
+	local function export(key, object)
+		if mod[key] ~= nil then
+			error("Attempted to re-export already exported module key \"" .. tostring(key) .. "\"!")
+		end
+
+		mod[key] = object
+
+		return object
+	end
+
+	return mod, export
 end
 
 --- Run a callback function for each field in a table, accumulating the results
