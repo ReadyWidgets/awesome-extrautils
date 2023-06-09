@@ -1,7 +1,8 @@
 local module_directory_name = ((...) or "awesome-extrautils"):gsub("%.", "/")
 
 ---@type fun(path?: string): AwesomeExtrautils
-return setmetatable({}, {
+---@diagnostic disable-next-line: assign-type-mismatch
+local extrautils = setmetatable({}, {
 	__index = function(self, key)
 		error([[
 <b>ERROR</b>: You attempted to directly index into ]] .. module_directory_name .. [[.
@@ -66,3 +67,5 @@ If you cloned ]] .. module_directory_name .. [[ into the default config director
 		return require("extrautils")
 	end
 })
+
+return extrautils
