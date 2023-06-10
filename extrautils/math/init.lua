@@ -20,4 +20,32 @@ function math.clamp(value, floor, ceiling)
 	return value
 end
 
+local dpi
+do
+	local success, beautiful = pcall(require, "beautiful")
+
+	if not success then
+		return math
+	end
+
+	dpi = beautiful.xresources.dpi
+end
+
+--- Scale a size value to support UI scaling
+---@param value number
+---@param screen? screen
+---@param scaling_factor? number
+---@return unknown
+function math.scale(value, screen, scaling_factor)
+	scaling_factor = scaling_factor or 1
+
+	local scaled = value * scaling_factor
+
+	if screen ~= nil then
+		scaled = scaled * screen.scaling_factor
+	end
+
+	return dpi(scaled)
+end
+
 return math
