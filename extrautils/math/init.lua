@@ -28,7 +28,7 @@ do
 		return math
 	end
 
-	dpi = beautiful.xresources.dpi
+	dpi = beautiful.xresources.apply_dpi
 end
 
 --- Scale a size value to support UI scaling
